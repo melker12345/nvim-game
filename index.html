@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neovim Motion Game</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/vue@3"></script>
+</head>
+
+<body>
+    <div id="gameContainer">
+        <button @click="resetGame">Reset Game</button>
+        <div class="gridRow" v-for="row in 9" :key="row">
+            <div class="gridCell" v-for="column in 9" :key="column" :class="{
+                 'activeCell': row === currentPosition.row && column === currentPosition.column,
+                 'visitedCell': isCellVisited(row, column),
+                 'targetCell': row === targetPosition.row && column === targetPosition.column}">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getCellKey(cell) {
+            return `${cell.row}-${cell.column}`;
+        }
+
+        function heuristic(a, b) {
+            return Math.abs(a.row - b.row) + Math.abs(a.column - b.column);
+        }
+
+        function getNeighbors(cell) {
+            let neighbors = [];
+            const directions = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+            for (let [dx, dy] of directions) {
+                let newRow = cell.row + dx, newCol = cell.column + dy;
+                if (newRow > 0 && newRow <= 9 && newCol > 0 && newCol <= 9) {
+                    neighbors.push({ row: newRow, column: newCol });
+                }
+            }
+            return neighbors;
+        }
+
+        function aStar(start, goal) {
+            let openSet = [start];
+            let cameFrom = new Map();
+            let gScore = new Map();
+            let fScore = new Map();
+
+            gScore.set(getCellKey(start), 0);
+            fScore.set(getCellKey(start), heuristic(start, goal));
+
+            while (openSet.length > 0) {
+                let current = openSet.reduce((a, b) => fScore.get(getCellKey(a)) < fScore.get(getCellKey(b)) ? a : b);
+
+                if (current.row === goal.row && current.column === goal.column) {
+                    let path = [];
+                    while (current) {
+                        path.unshift(current);
+                        current = cameFrom.get(getCellKey(current));
+                    }
+                    return path;
+                }
+
+                openSet = openSet.filter(item => getCellKey(item) !== getCellKey(current));
+
+                for (let neighbor of getNeighbors(current)) {
+                    let tentativeGScore = gScore.get(getCellKey(current)) + 1;
+
+                    if (!gScore.has(getCellKey(neighbor)) || tentativeGScore < gScore.get(getCellKey(neighbor))) {
+                        cameFrom.set(getCellKey(neighbor), current);
+                        gScore.set(getCellKey(neighbor), tentativeGScore);
+                        fScore.set(getCellKey(neighbor), tentativeGScore + heuristic(neighbor, goal));
+
+                        if (!openSet.some(item => getCellKey(item) === getCellKey(neighbor))) {
+                            openSet.push(neighbor);
+                        }
+                    }
+                }
+            }
+
+            return []; // No path found
+        }
+
+        let app = Vue.createApp({
+            data() {
+                return {
+                    currentPosition: { row: 1, column: 1 },
+                    targetPosition: { row: 8, column: 8 },
+                    path: new Set()
+                };
+            },
+            methods: {
+                resetGame() {
+                    this.currentPosition = { row: 1, column: 1 }; // Reset player position
+                    this.generateNewTarget(); // Generate a new target position
+                    this.findPath(); // Find path to the new target
+                },
+                generateNewTarget() {
+                    // Generate random row and column for the new target
+                    const randomRow = Math.floor(Math.random() * 9) + 1;
+                    const randomColumn = Math.floor(Math.random() * 9) + 1;
+                    this.targetPosition = { row: randomRow, column: randomColumn };
+                },
+                movePlayer(keyPressed) {
+                    let newRow = this.currentPosition.row;
+                    let newColumn = this.currentPosition.column;
+
+                    switch (keyPressed) {
+                        case 'h':
+                            if (newColumn > 1) newColumn--;
+                            break;
+                        case 'j':
+                            if (newRow < 9) newRow++;
+                            break;
+                        case 'k':
+                            if (newRow > 1) newRow--;
+                            break;
+                        case 'l':
+                            if (newColumn < 9) newColumn++;
+                            break;
+                    }
+                    this.currentPosition = { row: newRow, column: newColumn };
+                    this.findPath();
+                    if (this.currentPosition.row === this.targetPosition.row && this.currentPosition.column === this.targetPosition.column) {
+                        this.resetGame(); // Reset the game if the player reaches the target
+                    }
+                },
+                isCellVisited(row, column) {
+                    return this.path.has(getCellKey({ row, column }));
+                },
+                findPath() {
+                    let foundPath = aStar(this.currentPosition, this.targetPosition);
+                    this.path.clear();
+                    foundPath.forEach(cell => {
+                        this.path.add(getCellKey(cell));
+                    });
+                }
+            },
+            mounted() {
+                this.findPath();
+                window.addEventListener('keydown', (event) => {
+                    if (['h', 'j', 'k', 'l'].includes(event.key)) {
+                        this.movePlayer(event.key);
+                    }
+                });
+            }
+        });
+        app.mount("#gameContainer");
+    </script>
+</body>
+
+</html>
