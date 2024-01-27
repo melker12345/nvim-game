@@ -11,6 +11,9 @@
 
 <body>
     <div id="gameContainer">
+        <div class="keyPressDisplay">
+            <h1>{{ keyPressCount }}</h1>
+        </div>
         <button @click="resetGame">Reset Game</button>
         <div class="gridRow" v-for="row in 9" :key="row">
             <div class="gridCell" v-for="column in 9" :key="column" :class="{
@@ -87,25 +90,35 @@
             data() {
                 return {
                     currentPosition: { row: 1, column: 1 },
-                    targetPosition: { row: 8, column: 8 },
-                    path: new Set()
+                    targetPosition: { row: 1, column: 2 },
+                    path: new Set(),
+                    keyPressCount: 0,
+                    originalPathLength: 0,
                 };
             },
             methods: {
                 resetGame() {
-                    this.currentPosition = { row: 1, column: 1 }; // Reset player position
-                    this.generateNewTarget(); // Generate a new target position
-                    this.findPath(); // Find path to the new target
+                    this.currentPosition = { row: 1, column: 1 };
+                    this.generateNewTarget();
+                    this.calculateOriginalPathLength();
+                    this.keyPressCount = 0;
                 },
                 generateNewTarget() {
-                    // Generate random row and column for the new target
+
                     const randomRow = Math.floor(Math.random() * 9) + 1;
                     const randomColumn = Math.floor(Math.random() * 9) + 1;
                     this.targetPosition = { row: randomRow, column: randomColumn };
                 },
+                calculateOriginalPathLength() {
+                    let path = aStar(this.currentPosition, this.targetPosition);
+                    this.originalPathLength = path.length - 1; // this fucking - 1 
+                    this.findPath();
+                },
                 movePlayer(keyPressed) {
+
                     let newRow = this.currentPosition.row;
                     let newColumn = this.currentPosition.column;
+
 
                     switch (keyPressed) {
                         case 'h':
@@ -121,10 +134,20 @@
                             if (newColumn < 9) newColumn++;
                             break;
                     }
+
                     this.currentPosition = { row: newRow, column: newColumn };
                     this.findPath();
-                    if (this.currentPosition.row === this.targetPosition.row && this.currentPosition.column === this.targetPosition.column) {
-                        this.resetGame(); // Reset the game if the player reaches the target
+                    this.keyPressCount++;
+
+                    if (this.currentPosition.row === this.targetPosition.row &&
+                        this.currentPosition.column === this.targetPosition.column) {
+                        if (this.keyPressCount === this.originalPathLength) {
+                            document.body.style.backgroundColor = 'green';
+                            setTimeout(() => {
+                                document.body.style.backgroundColor = '';
+                            }, 200);
+                        }
+                        this.resetGame();
                     }
                 },
                 isCellVisited(row, column) {
@@ -136,7 +159,7 @@
                     foundPath.forEach(cell => {
                         this.path.add(getCellKey(cell));
                     });
-                }
+                },
             },
             mounted() {
                 this.findPath();

@@ -5,6 +5,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    transition: background-color 0.2s ease-out;
 }
 #gameContainer {
     flex-wrap: wrap;
@@ -24,10 +25,10 @@ body {
 }
 .activeCell {
     background-color: #d50a0a !important;
-    border: 1px solid #00d9ff; /* Neon blue border */
+    border: 1px solid #ffffff; /* Neon blue border */
 }
 .visitedCell {
-    background-color: #00bbff;
+    background-color: #00bbffa1;
 }
 .targetCell {
     background-color: #00ff00 !important; /* Green background */
